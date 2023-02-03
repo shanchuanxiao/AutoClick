@@ -4,6 +4,7 @@
 import os
 import re
 import sys
+import copy
 import time
 
 # # 安装所需函数库
@@ -15,6 +16,7 @@ import time
 import pyperclip
 import pyautogui as pgi
 
+pgi.FAILSAFE = False
 
 class AutoClick():
 
@@ -45,15 +47,27 @@ class AutoClick():
             print('>>> 无效参数输入！！！')
             sys.exit(0)  # 程序中断
 
-        print('指令文件地址：' + self.ins_position + '\n' + '定位图片地址：' + self.ins_picture)
+        print('>>> 指令文件地址：' + self.ins_position + '\n' + '>>> 定位图片地址：' + self.ins_picture)
 
 
     # # 读取指令
     def read_ins(self):
         # # 读取指令文件
         with open(self.ins_position, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-        self.instructions = [re.split(r'[、；]', i)[:-1] for i in lines]  # 以、，；三个分隔符分割指令
+            lines = [i.strip() for i in f.readlines()]
+        # # 预处理指令，删除注释行、空行，每行必须以；结尾
+        self.instrctions = copy.deepcopy(lines)
+        for i in lines:
+            if len(i) == 0:     # 如果该行为空行，则删除这一行
+                self.instrctions.remove(i)
+            elif i[0] == '#':    # 如果该行为注释行，则删除这一行
+                self.instrctions.remove(i)
+            elif i[-1] != '；':
+                print('>>> 每行指令应以中文输入情况下的分号；结尾')
+            else:
+                pass
+
+        self.instructions = [re.split(r'[、；]', i)[:-1] for i in self.instrctions]  # 以、，；三个分隔符分割指令
         for i in self.instructions:
             if len(i) <= 1:                 # 如果某行指令为空，则去除该行
                 self.instructions.remove(i)
@@ -91,6 +105,9 @@ class AutoClick():
         if move_dir[0] == '图':        # 如果方向是由截图给出
             # # 获取图片在屏幕中的中心坐标
             position = pgi.locateCenterOnScreen(self.ins_picture + '\\' + move_dir[1] + '.png')
+            if position == None:
+                print('>>> 在当前屏幕中未找到截图！！！')
+                sys.exit(0)
             pgi.moveTo(position[0], position[1], duration=0.25)     # 鼠标移动到截图的中心位置，时间间隔0.25s
         elif move_dir[0] == '坐标':     # 如果给出具体坐标
             # # 获取坐标x,y
